@@ -4,6 +4,8 @@ using System.Windows;
 using System.Windows.Threading;
 using CefSharp;
 using AppHostCefSharp.Services;
+using System.ServiceModel;
+using System.ServiceModel.Channels;
 
 namespace AppHostCefSharp.WebBrowser
 {
@@ -20,6 +22,7 @@ namespace AppHostCefSharp.WebBrowser
         {
             CefInit();
             InitializeComponent();
+
         }
 
         public BrowserControl(IBrowserService service)
@@ -28,6 +31,8 @@ namespace AppHostCefSharp.WebBrowser
 
             CefInit();
             InitializeComponent();
+
+            //startTheOutboundPipe
 
             this.service = service;
 
@@ -40,6 +45,7 @@ namespace AppHostCefSharp.WebBrowser
             dispatcherTimer = new DispatcherTimer {Interval = new TimeSpan(0, 0, 1)};
             dispatcherTimer.Tick += dispatcherTimer_Tick;
             dispatcherTimer.Start();
+            StartPipeClient();
         }
 
         private void dispatcherTimer_Tick(object sender, EventArgs e)
@@ -79,6 +85,16 @@ namespace AppHostCefSharp.WebBrowser
             }
 
             Cef.Initialize(settings);
+        }
+
+        private void StartPipeClient()
+        {
+            ChannelFactory<IStringReverser> pipeFactory = new ChannelFactory<IStringReverser>(
+                new NetNamedPipeBinding(),
+                new EndpointAddress("net.pipe://localhost/PipeReverse"));
+            IStringReverser pipeProxy = pipeFactory.CreateChannel();
+
+            MessageBox.Show(pipeProxy.ReverseString("asdf"));
         }
 
         #region IContextMenuHandler
@@ -139,5 +155,12 @@ namespace AppHostCefSharp.WebBrowser
         }
 
         #endregion
+    }
+
+    [ServiceContract]
+    public interface IStringReverser
+    {
+        [OperationContract]
+        string ReverseString(string value);
     }
 }

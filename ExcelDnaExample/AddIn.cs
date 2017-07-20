@@ -9,6 +9,7 @@ using Nancy;
 using Nancy.Hosting.Self;
 using AppHostCefSharp;
 using ExcelInterop = NetOffice.ExcelApi;
+using System.ServiceModel;
 
 namespace ExcelDnaExample
 {
@@ -115,6 +116,7 @@ namespace ExcelDnaExample
                 Title = "AppHostCefSharp"
             };
 
+            StartNamedPipeHost();
             Show(window);
         }
 
@@ -166,5 +168,50 @@ namespace ExcelDnaExample
             host.Stop();
             host = null;
         }
+
+        private static void StartNamedPipeHost()
+        {
+            using (ServiceHost host = new ServiceHost(
+                typeof(StringReverser),
+                new Uri[] {
+                    new Uri("net.pipe://localhost")
+                })) {
+                host.AddServiceEndpoint(typeof(IStringReverser),
+                    new NetNamedPipeBinding(),
+                    "PipeReverse");
+                host.Open();
+
+                Console.WriteLine("service is available");
+                Console.ReadLine();
+                MessageBox.Show("Closing service");
+                
+            }
+
+        }
+
     }
+
+
+    //Following https://web.archive.org/web/20141027055124/http://tech.pro/tutorial/855/wcf-tutorial-basic-interprocess-communication
+    [ServiceContract]
+    public interface IStringReverser
+    {
+        [OperationContract]
+        string ReverseString(string value);
+    }
+
+    public class StringReverser : IStringReverser
+    {
+        public string ReverseString(string value)
+        {
+            char[] retVal = value.ToCharArray();
+            int idx = 0;
+            for (int i = value.Length - 1; i >= 0; i--)
+                retVal[idx++] = value[i];
+
+            return new string(retVal);
+        }
+    }
+
+
 }
