@@ -6,6 +6,7 @@ using CefSharp;
 using AppHostCefSharp.Services;
 using System.ServiceModel;
 using System.ServiceModel.Channels;
+using System.Diagnostics;
 
 namespace AppHostCefSharp.WebBrowser
 {
@@ -18,12 +19,7 @@ namespace AppHostCefSharp.WebBrowser
         private readonly IBrowserService service;
         private readonly DispatcherTimer dispatcherTimer;
 
-        public BrowserControl()
-        {
-            CefInit();
-            InitializeComponent();
 
-        }
 
         public BrowserControl(IBrowserService service)
         {
@@ -46,6 +42,7 @@ namespace AppHostCefSharp.WebBrowser
             dispatcherTimer.Tick += dispatcherTimer_Tick;
             dispatcherTimer.Start();
             StartPipeClient();
+            Browser.RegisterAsyncJsObject("boundAsync", new AsyncBoundObject(pipeProxy));
         }
 
         private void dispatcherTimer_Tick(object sender, EventArgs e)
@@ -82,6 +79,7 @@ namespace AppHostCefSharp.WebBrowser
                 var path = Path.Combine(appDataRoot, appDataFolder);
                 settings.CachePath = Path.Combine(path, AppDataFolderCache);
                 settings.UserDataPath = Path.Combine(path, AppDataFolderUserData);
+                settings.IgnoreCertificateErrors = true;
             }
 
             Cef.Initialize(settings);
@@ -92,10 +90,11 @@ namespace AppHostCefSharp.WebBrowser
             ChannelFactory<IStringReverser> pipeFactory = new ChannelFactory<IStringReverser>(
                 new NetNamedPipeBinding(),
                 new EndpointAddress("net.pipe://localhost/PipeReverse"));
-            IStringReverser pipeProxy = pipeFactory.CreateChannel();
+            pipeProxy = pipeFactory.CreateChannel();
 
-            MessageBox.Show(pipeProxy.ReverseString("asdf"));
         }
+
+        private static IStringReverser pipeProxy;
 
         #region IContextMenuHandler
 
@@ -155,6 +154,22 @@ namespace AppHostCefSharp.WebBrowser
         }
 
         #endregion
+
+        public class AsyncBoundObject
+        {
+            private IStringReverser pipeProxy;
+            public AsyncBoundObject(IStringReverser proxy)
+            {
+                pipeProxy = proxy;
+            }
+
+
+            [DebuggerHidden]
+            public string Div(int divident, int divisor)
+            {
+                return pipeProxy.ReverseString("reverse this");
+            }
+        }
     }
 
     [ServiceContract]

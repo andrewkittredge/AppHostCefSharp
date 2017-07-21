@@ -19,7 +19,7 @@ namespace ExcelDnaExample
             GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         private static NancyHost host;
-
+        private static ServiceHost pipeHost;
         public AddIn()
         {
             // Prepare AppData
@@ -69,7 +69,7 @@ namespace ExcelDnaExample
         }
 
         private static string WebHost
-            => $"http://localhost:{Settings.Default["API_Port"]}";
+            => $"https://localhost:444/query/excelfootnotes";
 
         internal static ExcelInterop.Application Excel
             => new ExcelInterop.Application(null, ExcelDnaUtil.Application);
@@ -110,7 +110,7 @@ namespace ExcelDnaExample
         public static void ShowExampleForm()
         {
             var geometry = new GeometryPersistence("ExampleWindow", 800, 600);
-            var start = $"{WebHost}/Content/index.html";
+            var start = $"https://localhost:444/query/excelfootnotes";
             var window = new BrowserWindow(start, geometry, Settings.AppDataFolder)
             {
                 Title = "AppHostCefSharp"
@@ -171,24 +171,17 @@ namespace ExcelDnaExample
 
         private static void StartNamedPipeHost()
         {
-            using (ServiceHost host = new ServiceHost(
+            pipeHost = new ServiceHost(
                 typeof(StringReverser),
                 new Uri[] {
                     new Uri("net.pipe://localhost")
-                })) {
-                host.AddServiceEndpoint(typeof(IStringReverser),
+                });
+                
+            pipeHost.AddServiceEndpoint(typeof(IStringReverser),
                     new NetNamedPipeBinding(),
                     "PipeReverse");
-                host.Open();
-
-                Console.WriteLine("service is available");
-                Console.ReadLine();
-                MessageBox.Show("Closing service");
-                
-            }
-
+            pipeHost.Open();
         }
-
     }
 
 
